@@ -21,12 +21,15 @@ int gen_matrix(char* fileA, struct matrix* M)
 	}
 	matrix = malloc(newlineCounter * rowCount * sizeof(double*));
 	int i;
+	//rewind(fp);
 	for(i = 0; i < newlineCounter * rowCount; i++){
 		fscanf(fp, "%f", matrix[i]);
+		printf("%f ", matrix[i]);printf("\n");
 	}
 	M->rows = rowCount;
 	M->columns = newlineCounter;
 	M->matrix = matrix;
 	double val;
+	fclose(fp);
 	return 0;
 }
