@@ -18,11 +18,24 @@ int main(int argc, char** argv)
 		gen_matrix(argv[1], A);
 		gen_matrix(argv[2], B);
 		C->matrix = malloc(sizeof(double) * A->columns * B->rows);
-		printf("Hi from %d\n%p\n%p\n%p\n", myid,A,B,C);
+//		printf("Hi from %d\n%p\n%p\n%p\n", myid,A,B,C);
+		if(myid == 0){
+
+		}
+		else{
+			int i;
+			int matSize = A->rows * A->columns;
+			for(int i = 0; i < matSize; i++){
+				printf("%1.f ",myid +  A->matrix[i]);
+			}
+		}
+		printf("\n");
 	}
 	
 
 	//Need to free all the matrices.
-
+	free(A);
+	free(B);
+	free(C);
 	return 0;
 }
