@@ -45,6 +45,7 @@ int main(int argc, char** argv)
 			int i;
 
 			ansDimension = B->columns * A->rows;
+			C->matrix = malloc(sizeof(double) * ansDimension);
 			printf("Master %d\nA rows MASTER: %d", ansDimension, A->rows);
 			vector = malloc(sizeof(double) * A->columns);
 			vecSize = sizeof(double) * A->columns;
@@ -61,10 +62,19 @@ int main(int argc, char** argv)
 				rowsCompleted++;
 			}
 			printf("Master out\n");
-			while(rowsCompleted <  A->rows){
+			int rowsProcessed = 0;
+			while(rowsCompleted <=  A->rows){
 				int j;
 				int freeSlave;
-				//MPI_Recv(
+				MPI_Recv(&C->matrix[A->rows * rowsProcessed],
+					A->rows, MPI_DOUBLE, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD,
+					&status);
+				printf("Master got a matrix.\n");
+				int i; rowsProcessed++;
+				for(i = 0; i < A->rows; i++){
+					printf("%lf ", C->matrix[rowsProcessed * A->rows + i]);
+				}
+				printf("\n");
 				for(j = 0; j < A->columns; j++){
 					vector[j] = A->matrix[(rowsCompleted * A->columns) + j];
 				}
@@ -107,21 +117,28 @@ int main(int argc, char** argv)
 			printf("%d got the vector.\n", myid);
 			double* result = malloc(sizeof(double) * B->columns);
 			int i;
+			
 			for(i = 0; i < A->columns; i++){
-				printf("%1.f ", vector[i]);
+			//	printf("%1.f ", vector[i]);
 			}
 			for(i = 0; i < A->rows; i++){
 				int j;
+				result[i] = 0;
 				for(j = 0; j < B->columns; j++){
-					result[
+					result[i] += vector[j] * B->matrix[(i) + (B->rows * j)];
+	//				printf("%lf * %lf: %lf ", vector[j], B->matrix[(i * B->columns) + (B->rows * j)], result[i]);
 				}
 			}
-			printf("SLAVE'S A MATRIX: \n");
+			for(i = 0; i < A->rows; i++){
+				printf("%lf ", result[i]);
+			}
+			printf("\nSLAVE'S A MATRIX: \n");
 			print_matrix(A);
 			printf("SLAVE'S B MATRIX: \n");
 			print_matrix(B);
 
 			printf("\n");
+			MPI_Send(result, A->rows, MPI_DOUBLE, 0, status.MPI_TAG, MPI_COMM_WORLD);
 		}
 
 	}
