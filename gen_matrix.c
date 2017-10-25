@@ -8,24 +8,19 @@ int gen_matrix(char* fileA, struct matrix* M)
 	int newlineCounter = 0;
 	char dontCountRows = 0;
 	int c=0;
-	while((c = getc(fp)) != EOF){
-		if(c != '\n'){
-			if(dontCountRows == 0 && c != ' '){
-				rowCount++;
-			}
-		}
-		else{
-			dontCountRows = 1;
-			newlineCounter++;
-		}
-	}
-	matrix = malloc(newlineCounter * rowCount * sizeof(double*));
+	double n;
+	fscanf(fp, "%d", &rowCount);
+	fscanf(fp, "%d", &newlineCounter);
+	printf("%d %d\n", newlineCounter, rowCount);
+	matrix = malloc((int)(newlineCounter * rowCount) * sizeof(double));
 	int i;
-	//rewind(fp);
-	for(i = 0; i < newlineCounter * rowCount; i++){
-		fscanf(fp, "%f", matrix[i]);
-		printf("%f ", matrix[i]);printf("\n");
+	i = 0;
+//	rewind(fp);
+	while(fscanf(fp, "%lf", &n) != EOF){
+		matrix[i++] = n;	
+	//	printf("Got %f\n", matrix[i]);
 	}
+	printf("wat\n");
 	M->rows = rowCount;
 	M->columns = newlineCounter;
 	M->matrix = matrix;
@@ -33,3 +28,17 @@ int gen_matrix(char* fileA, struct matrix* M)
 	fclose(fp);
 	return 0;
 }
+
+int print_matrix(struct matrix* M){
+	int i, j;
+	int rowsDone = 0;
+	for(i = 0; i < M->rows; i++){
+		for(j = 0; j < M->columns; j++){
+			printf("%lf ", M->matrix[3*i+j]);
+		}
+		printf("\n");
+	}
+	return 0;
+		
+}
+

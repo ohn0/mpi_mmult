@@ -13,4 +13,5 @@ struct matrix{
 };
 int gen_matrix(char*, struct matrix*);
 int mmult(struct matrix*, struct matrix*);
+int print_matrix(struct matrix*);
 #endif
