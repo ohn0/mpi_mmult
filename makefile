@@ -1,2 +1,2 @@
-mpi_mmult: gen_matrix.c mpi_mmult.c
-	mpicc gen_matrix.c mpi_mmult.c -o mpi_mmult
+mpi_mmult: mat_utils.c mpi_mmult.c
+	mpicc mat_utils.c mpi_mmult.c -o mpi_mmult
