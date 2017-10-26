@@ -58,7 +58,7 @@ int main(int argc, char** argv)
 			}
 			int rowsProcessed = 0;
 			int waitingSlaveID = 0;
-			while(rowsProcessed < B->rows){
+			while(rowsProcessed < A->rows){
 				int j;
 				int freeSlave;
 				double interResult[B->rows];
@@ -71,7 +71,7 @@ int main(int argc, char** argv)
 				}
 				rowsProcessed++;
 
-				if(rowsCompleted < B->rows){
+				if(rowsCompleted < A->rows){
 				for(j = 0; j < A->columns; j++){
 					vector[j] = A->matrix[(rowsCompleted * A->columns) + j];
 				}
@@ -82,11 +82,13 @@ int main(int argc, char** argv)
 				}
 			}
 			//int i;
+			printf("Breaking from master.\n");
 			for(i = 0; i < ansDimension; i++){
+				if(i%A->columns == 0){printf("\n");}
 				printf("%lf ", C->matrix[i]);
-				if(i > 0 && (i % A->rows == 0)){printf("\n");}
 			}
-			for(i = 1; i <= min(numprocs-1, B->rows) ;i++){
+			printf("\n");
+			for(i = 1; i <= min(numprocs-1, A->rows) ;i++){
 				MPI_Send(MPI_BOTTOM, 0, MPI_DOUBLE, i, 0, MPI_COMM_WORLD);
 			}
 			
@@ -107,7 +109,7 @@ int main(int argc, char** argv)
 	//		MPI_Bcast(vector, A->columns, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 			ansDimension = A->rows * B->columns;
 			while(1 ){
-				if(myid > B->rows){printf("%d breaking.\n", myid);break;}
+				if(myid > A->rows){printf("%d breaking.\n", myid);break;}
 				MPI_Recv(vector, A->columns, MPI_DOUBLE, 0, MPI_ANY_TAG,
 					 MPI_COMM_WORLD, &status);
 				if(status.MPI_TAG == 0){
