@@ -1,4 +1,3 @@
-//#define MPI_USED
 #include "mmult.h"
 
 int main(int argc, char** argv)
@@ -21,7 +20,6 @@ int main(int argc, char** argv)
 
 	if(argc > 1){
 
-	//	int ansDimension = A->columns * B->rows;
 		int ansDimension;
 		int vecSize;
 	//	C->matrix = malloc(sizeof(double) * ansDimension);
@@ -33,6 +31,7 @@ int main(int argc, char** argv)
 			print_matrix(A);
 			matSize[0] = A->rows * A->columns;
 			matSize[1] = B->rows * B->columns;
+			if(B->rows != A->columns){printf("QUITTING\n");return -1;}
 			MPI_Bcast(matSize, 2, MPI_INT, 0, MPI_COMM_WORLD);
 			
 			MPI_Bcast(A->matrix, matSize[0], MPI_DOUBLE, 0, MPI_COMM_WORLD);
@@ -41,12 +40,10 @@ int main(int argc, char** argv)
 			MPI_Bcast(&(B->rows),1,  MPI_INT, 0, MPI_COMM_WORLD);
 			MPI_Bcast(&(A->columns), 1, MPI_INT, 0, MPI_COMM_WORLD);
 			MPI_Bcast(&(B->columns), 1, MPI_INT, 0, MPI_COMM_WORLD);
-			printf("MATRIX A:\n");
 			int i;
 
-			ansDimension = B->columns * A->rows;
+			ansDimension = A->rows * B->columns;
 			C->matrix = malloc(sizeof(double) * ansDimension);
-			printf("Master %d\nA rows MASTER: %d", ansDimension, A->rows);
 			vector = malloc(sizeof(double) * A->columns);
 			vecSize = sizeof(double) * A->columns;
 			MPI_Bcast(&vecSize, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -55,90 +52,90 @@ int main(int argc, char** argv)
 				int j;
 				for(j = 0; j < A->columns; j++){
 					vector[j] = A->matrix[(rowsCompleted * A->columns) + j];
-					printf("%d ", vector[j]);//printf("%d ", (rowsCompleted * A->columns) + j);
 				}
-				printf("sending vector %d\n", k);
 				MPI_Send(vector, A->columns, MPI_DOUBLE, k+1, k+1, MPI_COMM_WORLD);
 				rowsCompleted++;
 			}
-			printf("Master out\n");
 			int rowsProcessed = 0;
-			while(rowsCompleted <=  A->rows){
+			int waitingSlaveID = 0;
+			while(rowsProcessed < B->rows){
 				int j;
 				int freeSlave;
-				MPI_Recv(&C->matrix[A->rows * rowsProcessed],
-					A->rows, MPI_DOUBLE, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD,
-					&status);
-				printf("Master got a matrix.\n");
-				int i; rowsProcessed++;
-				for(i = 0; i < A->rows; i++){
-					printf("%lf ", C->matrix[rowsProcessed * A->rows + i]);
+				double interResult[B->rows];
+	//			MPI_Recv(&(C->matrix[A->rows * rowsProcessed]),
+				printf("Waiting to receive from %d.\n", (waitingSlaveID % (numprocs-1))+1);
+				MPI_Recv(interResult, B->rows, MPI_DOUBLE, (waitingSlaveID % (numprocs-1))+1,(waitingSlaveID %(numprocs-1))+1 ,MPI_COMM_WORLD,&status); waitingSlaveID++;
+				int i;
+				for(i = 0; i < B->rows; i++){
+					C->matrix[B->rows * rowsProcessed + i] = interResult[i];
 				}
-				printf("\n");
+				rowsProcessed++;
+
+				if(rowsCompleted < B->rows){
 				for(j = 0; j < A->columns; j++){
 					vector[j] = A->matrix[(rowsCompleted * A->columns) + j];
 				}
-				
+				printf("SENDING TO %d", status.MPI_TAG);
+				MPI_Send(vector, A->columns, MPI_DOUBLE, status.MPI_TAG, status.MPI_TAG,
+					MPI_COMM_WORLD);
+				rowsCompleted++;
+				}
 			}
-			printf("not stuck\n");
+			//int i;
+			for(i = 0; i < ansDimension; i++){
+				printf("%lf ", C->matrix[i]);
+				if(i > 0 && (i % A->rows == 0)){printf("\n");}
+			}
+			for(i = 1; i <= min(numprocs-1, B->rows) ;i++){
+				MPI_Send(MPI_BOTTOM, 0, MPI_DOUBLE, i, 0, MPI_COMM_WORLD);
+			}
 			
 		}
 		else{
 
 			MPI_Bcast(matSize, 2, MPI_INT, 0, MPI_COMM_WORLD);
-			printf("Waiting...\nm1:%d\n2:%d\n", matSize[0], matSize[1]);
 			A->matrix = malloc(sizeof(double) * matSize[0]);
 			B->matrix = malloc(sizeof(double) * matSize[1]);
 			MPI_Bcast(A->matrix, matSize[0], MPI_DOUBLE, 0, MPI_COMM_WORLD);
 			MPI_Bcast(B->matrix, matSize[1], MPI_DOUBLE, 0, MPI_COMM_WORLD);
-			printf("wait before  vec\n");
 			MPI_Bcast(&(A->rows),1,  MPI_INT, 0, MPI_COMM_WORLD);
 			MPI_Bcast(&(B->rows),1,  MPI_INT, 0, MPI_COMM_WORLD);
-			printf("wait on vec Arows: %d\n", A->rows);
 			MPI_Bcast(&(A->columns), 1, MPI_INT, 0, MPI_COMM_WORLD);
 			MPI_Bcast(&(B->columns), 1, MPI_INT, 0, MPI_COMM_WORLD);
 			MPI_Bcast(&vecSize, 1, MPI_INT, 0, MPI_COMM_WORLD);
 			vector = malloc(vecSize);
 	//		MPI_Bcast(vector, A->columns, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-			ansDimension = B->columns * A->rows;
-			printf("Slave %d\n", ansDimension);
-			while(1){
-				printf("Beginning to wait.\n");
+			ansDimension = A->rows * B->columns;
+			while(1 ){
+				if(myid > B->rows){printf("%d breaking.\n", myid);break;}
 				MPI_Recv(vector, A->columns, MPI_DOUBLE, 0, MPI_ANY_TAG,
 					 MPI_COMM_WORLD, &status);
-				if(status.MPI_TAG == myid){
+				if(status.MPI_TAG == 0){
 					printf("Slave breaking\n");
 					break;
 				}
 				else{
 					printf("Slave %d's MPI_TAG: %d\n", myid, status.MPI_TAG);
 				}
-			}
-			printf("%d got the vector.\n", myid);
-			double* result = malloc(sizeof(double) * B->columns);
-			int i;
-			
-			for(i = 0; i < A->columns; i++){
-			//	printf("%1.f ", vector[i]);
-			}
-			for(i = 0; i < A->rows; i++){
-				int j;
-				result[i] = 0;
-				for(j = 0; j < B->columns; j++){
-					result[i] += vector[j] * B->matrix[(i) + (B->rows * j)];
-	//				printf("%lf * %lf: %lf ", vector[j], B->matrix[(i * B->columns) + (B->rows * j)], result[i]);
+				printf("%d got the vector.\n", myid);
+				double* result = malloc(sizeof(double) * B->columns);
+				int i;
+				
+				for(i = 0; i < A->columns; i++){
+				//	printf("%1.f ", vector[i]);
 				}
+				for(i = 0; i < B->columns; i++){
+					int j;
+					result[i] = 0;
+					for(j = 0; j < A->columns; j++){
+						result[i] += vector[j] * B->matrix[(i) + (B->rows * j)];
+		//				printf("%lf * %lf: %lf ", vector[j], B->matrix[(i * B->columns) + (B->rows * j)], result[i]);
+						}
+				}
+				printf("%d sending.\n", myid);	
+				MPI_Send(result, B->rows, MPI_DOUBLE, 0, status.MPI_TAG, MPI_COMM_WORLD);
 			}
-			for(i = 0; i < A->rows; i++){
-				printf("%lf ", result[i]);
-			}
-			printf("\nSLAVE'S A MATRIX: \n");
-			print_matrix(A);
-			printf("SLAVE'S B MATRIX: \n");
-			print_matrix(B);
-
-			printf("\n");
-			MPI_Send(result, A->rows, MPI_DOUBLE, 0, status.MPI_TAG, MPI_COMM_WORLD);
+			printf("%d escaped.\n", myid);
 		}
 
 	}
