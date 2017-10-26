@@ -35,7 +35,7 @@ int print_matrix(struct matrix* M)
 	int rowsDone = 0;
 	for(i = 0; i < M->rows; i++){
 		for(j = 0; j < M->columns; j++){
-			printf("%lf ", M->matrix[3*i+j]);
+			printf("%lf ", M->matrix[M->rows*i+j]);
 		}
 		printf("\n");
 	}
